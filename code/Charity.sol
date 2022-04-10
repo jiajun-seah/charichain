@@ -14,6 +14,7 @@ contract Charity {
         numberOfSubAccounts = number;
     }
 
+    //test comment 
     event Allocation(address accountAddress, uint256 percentages);
 
     // Function to receive Ether. msg.data must be empty
