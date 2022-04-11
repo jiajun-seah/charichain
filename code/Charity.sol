@@ -146,4 +146,18 @@ contract Charity {
     function getBalance() public view returns (uint) {
         return address(this).balance;
     }
+
+    function checkVoteOutcome() public payable returns(uint256[] memory vc) {
+        uint256[] memory voteCounts = new uint256[](getNumberOfAccounts());
+        for (uint256 i = 0; i < getNumberOfAccounts(); i++) {
+            uint256 currVoteCount = tokenContract.checkCreditGivenAddress(subAccounts[i]);
+            voteCounts[i] = currVoteCount;
+
+            //reset voteCount
+            tokenContract.getErc20Contract().transferFrom(subAccounts[i], address(this), currVoteCount); //simulate burn tokens by transferring from subaccount to charity
+
+        }
+
+        return voteCounts;        
+    }
 }

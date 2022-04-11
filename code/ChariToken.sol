@@ -26,6 +26,10 @@ contract ChariToken {
     function checkCredit() public view returns(uint256) {
         return erc20Contract.balanceOf(msg.sender);
     }
+
+    function checkCreditGivenAddress(address query) public view returns(uint256) {
+        return erc20Contract.balanceOf(query);
+    }
     
     //this is a unit conversion function that converts amount of ether into DTs
     function convertToCredits(uint256 etherAmount) public pure returns(uint256) {
