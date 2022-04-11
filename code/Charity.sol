@@ -9,16 +9,16 @@ contract Charity {
     address[] public subAccounts;
     uint8 public numberOfSubAccounts; //subaccounts sld not exceed 255
     mapping(address => uint8) public subAccountPercentages; // mapping of proportion of amount donated, for each sub-account [0.1, 0.2, 0.3, 0.4] etc
-    mapping(address => string) public subAccountNames; // same size as mapping above, stores the name of each subaccount for that charity
+    mapping(address => bytes32) public subAccountNames; // same size as mapping above, stores the name of each subaccount for that charity
     mapping(address => uint256) public subAccountVotes; //same size as mapping above, tracks num. of votes per subaccount for that charity
     mapping(address => uint256) public amountDonated; // mapping for amount that each person donates
 
 
-    constructor(address[] memory accounts, uint8 number) {
+    constructor(address[] memory accounts) {
         ChariToken ct = new ChariToken();
         tokenContract = ct;
         subAccounts = accounts;
-        numberOfSubAccounts = number;
+        numberOfSubAccounts = 0;
     }
 
     event Allocation(address accountAddress, uint8 percentages);
@@ -30,7 +30,7 @@ contract Charity {
     fallback() external payable {}
 
     // creation of sub-accounts for a single charity
-    function createSubAccount(address accountAddress) public {
+    function createSubAccount(address accountAddress, bytes32 accountName) public {
         address temp;
         for(uint i = 0; i < subAccounts.length; i++) {
             if (subAccounts[i] == accountAddress) {
@@ -40,6 +40,8 @@ contract Charity {
         require(temp != accountAddress, "This account has already been created");
         subAccounts.push(accountAddress);
         subAccountPercentages[accountAddress] = 0;
+        subAccountNames[accountAddress] = accountName;
+        numberOfSubAccounts += 1;
     }
 
     // allocate percentages based on sub-account addresses. Feed in array of percentages
@@ -88,8 +90,8 @@ contract Charity {
     
    
     
-    function getAccountsInOrder() public view returns (string[] memory xd) {
-        string[] memory listOfAccounts = new string[](getNumberOfAccounts());
+    function getAccountsInOrder() public view returns (bytes32[] memory xd) {
+        bytes32[] memory listOfAccounts = new bytes32[](getNumberOfAccounts());
         for (uint256 i = 0; i < getNumberOfAccounts(); i++) {
             listOfAccounts[i] = (subAccountNames[subAccounts[i]]); // "Food, 100" e.g.
         }
