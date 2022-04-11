@@ -33,8 +33,14 @@ contract Campaign {
     // TODO add all the events as per midterm test for testing
     event cannotWithdraw();
 
-    constructor() public {
+    constructor(address[] memory sub, uint8 numberOfSub, uint8[] memory percentages, bytes32[] memory names) {
         charityOwner = msg.sender;
+        numberOfSubAccounts = numberOfSub;
+        subAccounts = sub;
+        for (uint i = 0; i < numberOfSubAccounts; i++) {
+            subAccountPercentages[subAccounts[i]] = percentages[i];
+            subAccountNames[subAccounts[i]] = names[i];
+        }
     }
 
     // Modifiers
@@ -98,7 +104,7 @@ contract Campaign {
         donorsBalance[msg.sender] = donorBalance;
     }
 
-    function withdrawCampaign(bytes32 subAccount) public timedTransitions { // if charity wants to withdraw
+    function withdrawCampaign(bytes32 subAccount) public timedTransitions ownerOnly { // if charity wants to withdraw
         address temp;
         for (uint i = 0; i < numberOfSubAccounts; i++) {
             if (subAccountNames[subAccounts[i]] == subAccount) {

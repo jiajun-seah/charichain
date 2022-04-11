@@ -3,10 +3,13 @@ pragma solidity ^0.8.0;
 pragma abicoder v2;
 
 import "./ChariToken.sol";
+import "./Campaign.sol";
 
 contract Charity {
     ChariToken tokenContract;
+    Campaign campaignContract;
     address[] public subAccounts;
+    address _owner = msg.sender;
     uint8 public numberOfSubAccounts; //subaccounts sld not exceed 255
     mapping(address => uint8) public subAccountPercentages; // mapping of proportion of amount donated, for each sub-account [0.1, 0.2, 0.3, 0.4] etc
     mapping(address => bytes32) public subAccountNames; // same size as mapping above, stores the name of each subaccount for that charity
@@ -22,7 +25,11 @@ contract Charity {
     }
 
     event Allocation(address accountAddress, uint8 percentages);
-
+    
+    modifier ownerOnly() {
+        require(msg.sender == _owner);
+        _;
+    }
     // Function to receive Ether. msg.data must be empty
     receive() external payable {} // might need to change imo.... because we need to store senders
 
@@ -78,6 +85,17 @@ contract Charity {
         tokenContract.getErc20Contract().transfer(donor, tokensToAward); 
     }
 
+
+    function createCampaign() public ownerOnly() {
+        uint8[] memory percentages = new uint8[](getNumberOfAccounts());
+        bytes32[] memory names = new bytes32[](getNumberOfAccounts());
+        for (uint i = 0; i < getNumberOfAccounts(); i++) {
+            percentages[i] = subAccountPercentages[subAccounts[i]];
+            names[i] = subAccountNames[subAccounts[i]];
+        }
+        Campaign c = new Campaign(subAccounts, numberOfSubAccounts, percentages, names);
+        campaignContract = c;
+    }
 
 /* GETTERS */
 
