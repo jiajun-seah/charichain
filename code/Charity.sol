@@ -4,24 +4,23 @@ pragma abicoder v2;
 
 contract Charity {
     address[] public subAccounts;
-    uint256 public numberOfSubAccounts;
-    mapping(address => uint256) public subAccountPercentages; // mapping of proportion of amount donated, for each sub-account [0.1, 0.2, 0.3, 0.4] etc
-    mapping(address => string) public subAccountName; // same size as mapping above [
+    uint8 public numberOfSubAccounts; //subaccounts sld not exceed 255
+    mapping(address => uint8) public subAccountPercentages; // mapping of proportion of amount donated, for each sub-account [0.1, 0.2, 0.3, 0.4] etc
+    mapping(address => string) public subAccountName; // same size as mapping above
     mapping(address => uint256) public amountDonated; // mapping for amount that each person donates
 
-    constructor(address[] memory accounts, uint256 number) {
+    constructor(address[] memory accounts, uint8 number) {
         subAccounts = accounts;
         numberOfSubAccounts = number;
     }
 
-    //test comment 
-    event Allocation(address accountAddress, uint256 percentages);
+    event Allocation(address accountAddress, uint8 percentages);
 
     // Function to receive Ether. msg.data must be empty
-    function receive() external payable {} // might need to change imo.... because we need to store senders
+    receive() external payable {} // might need to change imo.... because we need to store senders
 
     // Fallback function is called when msg.data is not empty
-    function fallback() external payable {}
+    fallback() external payable {}
 
     // creation of sub-accounts for a single charity
     function createSubAccount(address accountAddress) public {
@@ -37,7 +36,7 @@ contract Charity {
     }
 
     // allocate percentages based on sub-account addresses. Feed in array of percentages
-    function allocatePercentages(uint256[] memory percentages) public{
+    function allocatePercentages(uint8[] memory percentages) public{
         require(percentages.length == subAccounts.length, "Length of input differs from number of sub-accounts");
         uint temp;
         for(uint i = 0; i < percentages.length; i++) {
@@ -54,7 +53,7 @@ contract Charity {
         uint256 amtDonated = getBalance();
         for (uint i =0; i < numberOfSubAccounts; i++) {
             address subAccountAdd = subAccounts[i]; // subaccount in question currently
-            uint256 ratio = subAccountPercentages[subAccountAdd];
+            uint8 ratio = subAccountPercentages[subAccountAdd];
             address payable subAccountAddPayable = payable(subAccountAdd);
             subAccountAddPayable.transfer((ratio/100)*amtDonated);
         }
@@ -66,7 +65,7 @@ contract Charity {
     function showAllocation() public {
         for(uint i = 0; i < subAccounts.length; i++) {
             address tempAddress = subAccounts[i];
-            uint256 tempAllocation = subAccountPercentages[tempAddress];
+            uint8 tempAllocation = subAccountPercentages[tempAddress];
             emit Allocation(tempAddress, tempAllocation);
         }
     }
