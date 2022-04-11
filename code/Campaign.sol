@@ -32,6 +32,8 @@ contract Campaign {
     address charityOwner;
     // TODO add all the events as per midterm test for testing
     event cannotWithdraw();
+    event accountGoalHit(address account, uint256 balance, bytes32 accountName);
+    event accountGoalNotHit(address account, uint256 balance, bytes32 accountName);
 
     constructor(address[] memory sub, uint8 numberOfSub, uint8[] memory percentages, bytes32[] memory names) {
         charityOwner = msg.sender;
@@ -53,6 +55,7 @@ contract Campaign {
         for (uint i = 0; i < numberOfSubAccounts; i++) {
             if (campaignAccountStatus[subAccounts[i]] == Stages.AcceptingDeposits && block.timestamp >= creationTime + 7 days) {
                 campaignAccountStatus[subAccounts[i]] = Stages.ElapsedDeposits;
+                emit accountGoalNotHit(subAccounts[i], subAccountBalance[subAccounts[i]], subAccountNames[subAccounts[i]]);
             }
         }
         _;
@@ -90,6 +93,7 @@ contract Campaign {
         }
         if (existingBalance >= campaignGoals[temp]) {
             campaignAccountStatus[temp] = Stages.ReleasingDeposits; // met the criteria already. release now? or wait for cue
+            emit accountGoalHit(temp, existingBalance, subAccount);
         }
         if (hasDonated[msg.sender] != true) {
             hasDonated[msg.sender] = true;
