@@ -17,7 +17,7 @@ contract ChariToken {
     }
 
     function getCredit() public payable {
-        uint256 amt = msg.value / 10000000000000000; // get DTs eligible
+        uint256 amt = msg.value / 10000000000000000; // get CTs eligible
         require(erc20Contract.totalSupply() + amt < supplyLimit, "CT supply is not enough!");
         //erc20Contract.transferFrom(owner, msg.sender, amt);
         erc20Contract.mint(msg.sender, amt);

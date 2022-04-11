@@ -2,14 +2,21 @@
 pragma solidity ^0.8.0;
 pragma abicoder v2;
 
+import "./ChariToken.sol";
+
 contract Charity {
+    ChariToken tokenContract;
     address[] public subAccounts;
     uint8 public numberOfSubAccounts; //subaccounts sld not exceed 255
     mapping(address => uint8) public subAccountPercentages; // mapping of proportion of amount donated, for each sub-account [0.1, 0.2, 0.3, 0.4] etc
-    mapping(address => string) public subAccountName; // same size as mapping above
+    mapping(address => string) public subAccountNames; // same size as mapping above, stores the name of each subaccount for that charity
+    mapping(address => uint256) public subAccountVotes; //same size as mapping above, tracks num. of votes per subaccount for that charity
     mapping(address => uint256) public amountDonated; // mapping for amount that each person donates
 
+
     constructor(address[] memory accounts, uint8 number) {
+        ChariToken ct = new ChariToken();
+        tokenContract = ct;
         subAccounts = accounts;
         numberOfSubAccounts = number;
     }
@@ -84,7 +91,7 @@ contract Charity {
     function getAccountsInOrder() public view returns (string[] memory xd) {
         string[] memory listOfAccounts = new string[](getNumberOfAccounts());
         for (uint256 i = 0; i < getNumberOfAccounts(); i++) {
-            listOfAccounts[i] = (subAccountName[subAccounts[i]]); // "Food, 100" e.g.
+            listOfAccounts[i] = (subAccountNames[subAccounts[i]]); // "Food, 100" e.g.
         }
         return listOfAccounts; // e.g. ["Food", "Water", "Air"]. combine with getProportions() to find out amount of money in each sub wallet
     }
