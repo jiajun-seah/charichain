@@ -13,7 +13,7 @@ contract ChariToken {
         ERC20 e = new ERC20(); //creates new instance of ERC20; ChariToken is owner of ERC20 contract
         erc20Contract = e;
         owner = msg.sender;
-        supplyLimit = 10000;
+        supplyLimit = 100000;
     }
 
     function getCredit(uint256 amt) public payable {
