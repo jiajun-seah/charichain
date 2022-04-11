@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 pragma solidity >= 0.5.0;
 
 // Charities should be able to declare a new campaign
