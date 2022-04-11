@@ -65,8 +65,8 @@ contract Charity {
     }
 
     // allocate donations based on balance.. do we need to change? to allocate each time someone donates
-    function allocateDonations() public payable {
-        uint256 amtDonated = getBalance();
+    function allocateDonations(uint256 amtDonated) public payable {
+        // uint256 amtDonated = getBalance();
         for (uint i =0; i < numberOfSubAccounts; i++) {
             address subAccountAdd = subAccounts[i]; // subaccount in question currently
             uint8 ratio = subAccountPercentages[subAccountAdd];
@@ -74,6 +74,17 @@ contract Charity {
             subAccountAddPayable.transfer((ratio/100)*amtDonated);
         }
     }
+
+    //process donations: split donations and award donor with tokens
+    function processDonations(uint256 amtDonated, address donor) public payable {
+        this.allocateDonations(amtDonated); //allocate donations
+
+        //mint tokens to this contract, then send it to donor
+        tokenContract.getCredit(amtDonated);
+        uint256 tokensToAward = tokenContract.convertToCredits(amtDonated);
+        tokenContract.getErc20Contract().transfer(donor, tokensToAward); 
+    }
+
 
     function createCampaign() public ownerOnly() {
         uint8[] memory percentages = new uint8[](getNumberOfAccounts());

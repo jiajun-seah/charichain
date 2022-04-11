@@ -16,14 +16,23 @@ contract ChariToken {
         supplyLimit = 10000;
     }
 
-    function getCredit() public payable {
-        uint256 amt = msg.value / 10000000000000000; // get CTs eligible
-        require(erc20Contract.totalSupply() + amt < supplyLimit, "CT supply is not enough!");
+    function getCredit(uint256 amt) public payable {
+        uint256 amtInTokens = amt / 10000000000000000; // get CTs eligible
+        require(erc20Contract.totalSupply() + amtInTokens < supplyLimit, "CT supply is not enough!");
         //erc20Contract.transferFrom(owner, msg.sender, amt);
-        erc20Contract.mint(msg.sender, amt);
+        erc20Contract.mint(msg.sender, amtInTokens);
     }
 
     function checkCredit() public view returns(uint256) {
         return erc20Contract.balanceOf(msg.sender);
+    }
+    
+    //this is a unit conversion function that converts amount of ether into DTs
+    function convertToCredits(uint256 etherAmount) public pure returns(uint256) {
+        return(etherAmount / 10000000000000000);
+    }
+
+    function getErc20Contract() public view returns(ERC20) {
+        return(erc20Contract);
     }
 }

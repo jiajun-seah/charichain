@@ -11,6 +11,13 @@ contract Donor {
         owner = userOwner;
     }
 
+    function donate(address charity) public payable {
+        uint256 amtDonated = msg.value;
+        address payable charityAddress = payable(charity);
+        charityAddress.transfer(amtDonated);
+    }
+
     function vote(address subAccount) public {
+        
     }
 }
