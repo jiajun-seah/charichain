@@ -9,11 +9,11 @@ module.exports = (deployer, network, accounts) => {
     deployer.deploy(ERC20).then(function() {
       deployer.deploy(ChariToken);
 
-      const accountList = [address[1], address[2], address[3]];
+      // const accountList = [accounts[1], accounts[2], accounts[3]];
       // for(let i = 0; i < 3; i++) {
       //   accountList.push(address[i])
       // }
-      deployer.deploy(Charity, accountList);
+      deployer.deploy(Charity);
       return deployer.deploy(Donor, 0, Charity, ChariToken);
     });
   };
