@@ -13,7 +13,7 @@ contract ChariToken {
         ERC20 e = new ERC20(); //creates new instance of ERC20; ChariToken is owner of ERC20 contract
         erc20Contract = e;
         owner = msg.sender;
-        supplyLimit = 10000;
+        supplyLimit = 100000;
     }
 
     function getCredit(uint256 amt) public payable {
@@ -25,6 +25,10 @@ contract ChariToken {
 
     function checkCredit() public view returns(uint256) {
         return erc20Contract.balanceOf(msg.sender);
+    }
+
+    function checkCreditGivenAddress(address query) public view returns(uint256) {
+        return erc20Contract.balanceOf(query);
     }
     
     //this is a unit conversion function that converts amount of ether into DTs

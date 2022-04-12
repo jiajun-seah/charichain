@@ -13,7 +13,7 @@ contract Charity {
     uint8 public numberOfSubAccounts; //subaccounts sld not exceed 255
     mapping(address => uint8) public subAccountPercentages; // mapping of proportion of amount donated, for each sub-account [0.1, 0.2, 0.3, 0.4] etc
     mapping(address => bytes32) public subAccountNames; // same size as mapping above, stores the name of each subaccount for that charity
-    mapping(address => uint256) public subAccountVotes; //same size as mapping above, tracks num. of votes per subaccount for that charity
+    // mapping(address => uint256) public subAccountVotes; //same size as mapping above, tracks num. of votes per subaccount for that charity
     mapping(address => uint256) public amountDonated; // mapping for amount that each person donates
 
 
@@ -51,7 +51,7 @@ contract Charity {
     }
 
     // allocate percentages based on sub-account addresses. Feed in array of percentages
-    function allocatePercentages(uint8[] memory percentages) public{
+    function allocatePercentages(uint8[] memory percentages) public ownerOnly() {
         require(percentages.length == subAccounts.length, "Length of input differs from number of sub-accounts");
         uint temp;
         for(uint i = 0; i < percentages.length; i++) {
@@ -173,4 +173,17 @@ contract Charity {
      function getCampaignType() public view returns (uint8) {
          return campaignContract.getCampaignType();
      }
+    function checkVoteOutcome() public payable returns(uint256[] memory vc) {
+        uint256[] memory voteCounts = new uint256[](getNumberOfAccounts());
+        for (uint256 i = 0; i < getNumberOfAccounts(); i++) {
+            uint256 currVoteCount = tokenContract.checkCreditGivenAddress(subAccounts[i]);
+            voteCounts[i] = currVoteCount;
+
+            //reset voteCount
+            tokenContract.getErc20Contract().transferFrom(subAccounts[i], address(this), currVoteCount); //simulate burn tokens by transferring from subaccount to charity
+
+        }
+
+        return voteCounts;        
+    }
 }
