@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.0;
+pragma solidity >=0.8.0;
 pragma abicoder v2;
 
 import "./ChariToken.sol";
@@ -31,10 +31,10 @@ contract Charity {
         _;
     }
     // Function to receive Ether. msg.data must be empty
-    receive() external payable {} // might need to change imo.... because we need to store senders
+    // receive() external payable {} // might need to change imo.... because we need to store senders
 
-    // Fallback function is called when msg.data is not empty
-    fallback() external payable {}
+    // // Fallback function is called when msg.data is not empty
+    // fallback() external payable {}
 
     // creation of sub-accounts for a single charity
     function createSubAccount(address accountAddress, bytes32 accountName) public ownerOnly() {
