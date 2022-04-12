@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity >= 0.5.0;
+pragma solidity >= 0.8.0;
 
 import "./ERC20.sol";
 
@@ -9,7 +9,7 @@ contract ChariToken {
     uint256 currentSupply;
     address owner;
 
-    constructor() public {
+    constructor() {
         ERC20 e = new ERC20(); //creates new instance of ERC20; ChariToken is owner of ERC20 contract
         erc20Contract = e;
         owner = msg.sender;

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity >= 0.5.0;
+pragma solidity >= 0.8.0;
 
 // Charities should be able to declare a new campaign
 // whereby delayed release of funds is implemented.
