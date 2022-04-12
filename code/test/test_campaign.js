@@ -10,24 +10,46 @@ var Donor = artifacts.require("../contracts/Donor.sol");
 const PREFIX = "Returned error: VM Exception while processing transaction: revert ";
 const INTER =  " -- Reason given: "
 
-contract('Charity', function(accounts) {
+contract('Campaign', function(accounts) {
     before(async() => {
-        charityInstance = await Charity.deployed();
+        
         erc20Instance = await ERC20.deployed();
         chariTokenInstance = await ChariToken.deployed();
-        donorInstance = await Donor.deployed();
+        charityInstance = await Charity.deployed();
+        //donorInstance = await Donor.deployed();
     });
 
     console.log("Testing Charity Contract")
 
-    // it('Charity creation', async() => {
-    //     let makeC1 = await diceInstance.add(1, 1, {from: accounts[1], value: 1000000000000000000});
-    //     assert.notStrictEqual(
-    //         makeD1,
-    //         undefined,
-    //         "Failed to create dice"
-    //     );
-    // });
+    // create sub accounts
+    it('Create Sub Accounts', async() => {
+        let makeS1 = await charityInstance.createSubAccount(accounts[2],
+        "0x00000000000000000000000000000000000000000000000000000000466f6f64",
+        {from: charityInstance.getContractOwner()});
+        let makeS2 = await charityInstance.createSubAccount(accounts[3],
+            "0x0000000000000000000000000000000000000000000000000000005761746572",
+            {from: charityInstance.getContractOwner()});
+        assert.notStrictEqual(
+            makeS1,
+            undefined,
+            "Failed to create sub account"
+        )
+        assert.notStrictEqual(
+            makeS2,
+            undefined,
+            "Failed to create sub account"
+        )
+    });
+
+    // 2) allocate percentages to each sub account using allocatePercentages[]
+
+    //3) create campaign (make sure owner instantiates),
+
+    //4) Add campaign goals
+
+    //5) Start campaign
+
+    //6) Donate to a sub account. This is where I got last stuck at
 
 });
 
