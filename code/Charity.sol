@@ -17,10 +17,9 @@ contract Charity {
     mapping(address => uint256) public amountDonated; // mapping for amount that each person donates
 
 
-    constructor(address[] memory accounts) {
+    constructor() {
         ChariToken ct = new ChariToken();
         tokenContract = ct;
-        subAccounts = accounts;
         numberOfSubAccounts = 0;
     }
 
@@ -37,7 +36,7 @@ contract Charity {
     fallback() external payable {}
 
     // creation of sub-accounts for a single charity
-    function createSubAccount(address accountAddress, bytes32 accountName) public {
+    function createSubAccount(address accountAddress, bytes32 accountName) public ownerOnly{
         address temp;
         for(uint i = 0; i < subAccounts.length; i++) {
             if (subAccounts[i] == accountAddress) {
@@ -86,16 +85,36 @@ contract Charity {
     }
 
 
-    function createCampaign() public ownerOnly() {
+    function createCampaign(bytes32 campaignName) public ownerOnly() {
         uint8[] memory percentages = new uint8[](getNumberOfAccounts());
         bytes32[] memory names = new bytes32[](getNumberOfAccounts());
         for (uint i = 0; i < getNumberOfAccounts(); i++) {
             percentages[i] = subAccountPercentages[subAccounts[i]];
             names[i] = subAccountNames[subAccounts[i]];
         }
-        Campaign c = new Campaign(subAccounts, numberOfSubAccounts, percentages, names);
+        uint8 campaignType = 2;
+        Campaign c = new Campaign(subAccounts, numberOfSubAccounts, percentages, names, campaignType, campaignName);
         campaignContract = c;
     }
+
+/* Campaign section */
+
+    function addCampaignGoals(uint256[] memory allocations) public{
+        campaignContract.addCampaignGoals(allocations);
+    }
+
+    function startCampaign(uint8 typeOfCampaign) public {
+        campaignContract.startCampaign(typeOfCampaign);
+    }
+
+    function depositCampaign(bytes32 subAccount) public payable {
+        campaignContract.depositCampaign(subAccount);
+    }
+
+    function withdrawCampaign(bytes32 subAccount) public {
+        campaignContract.withdrawCampaign(subAccount);
+    }
+
 
 /* GETTERS */
 
@@ -146,4 +165,12 @@ contract Charity {
     function getBalance() public view returns (uint) {
         return address(this).balance;
     }
+
+    function getSubAccountBalance(bytes32 subAccountName) public view returns(uint256) {
+        return campaignContract.getSubAccountBalance(subAccountName);
+    }
+
+     function getCampaignType() public view returns (uint8) {
+         return campaignContract.getCampaignType();
+     }
 }
