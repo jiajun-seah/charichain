@@ -24,6 +24,11 @@ contract Charity {
     }
 
     event Allocation(address accountAddress, uint8 percentages);
+
+    event Transfer(address to, uint256 amount); //event for transfer of CT
+    event AwardCT(address to, uint256 amount); //event for CT awarded to donor for donating
+    // event TokenSent(address sender, uint256 amt);
+    event Voted(address subAccount);
     
     modifier ownerOnly() {
         require(msg.sender == _owner);
@@ -117,6 +122,11 @@ contract Charity {
 
 
 /* GETTERS */
+    //Add relevant getters and setters
+    function getContractOwner() public view returns(address){
+        return _owner;
+    }
+
 
      // getter for allocation
     function showAllocation() public {
