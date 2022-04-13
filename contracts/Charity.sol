@@ -31,7 +31,9 @@ contract Charity {
     event GetCT(address to, uint256 amount); //event of this contract getting CT with Eth
     event TransferViaVote(address to, uint256 amount); //event of Donor voting to sub account
     // event TokenSent(address sender, uint256 amt); //event of Charity sending CT to donor
-    event Voted(address candidate); //event of voting for a sub-account
+    event Donated(address mainAccount); //event of voting for a sub-account
+    event Voted(address subaccount); //event of voting for a sub-account
+    
     
     modifier ownerOnly() {
         require(msg.sender == _owner);
@@ -79,12 +81,14 @@ contract Charity {
         emit GetCT(msg.sender, val);
     }
 
-    function transferCT(address to, uint256 amount) private { //transfer PT from Pool contract to an address, will be called within the contract when voting ends to transfer the PT in the pool to the winner or return the PT
+    function transferCT(address to, uint256 amount) public {
         erc20instance.transfer(to, amount);
         emit Transfer(to, amount);
     }
 
-    function transferCTViaVote(address from, address to, uint256 amount) private { //transfer PT from Pool contract to an address, will be called within the contract when voting ends to transfer the PT in the pool to the winner or return the PT
+    function transferCTViaVote(address from, address to, uint256 amount) public { 
+        erc20instance.approve(address(this), amount);
+        erc20instance.approve(from, amount);
         erc20instance.transferFrom(from, to, amount);
         emit TransferViaVote(to, amount);
     }
@@ -100,14 +104,17 @@ contract Charity {
         //mint tokens to this contract, then send it to donor
         getCT(amtDonated);
         uint256 tokensToAward = this.convertToCredits(amtDonated);
-        transferCT(donor, tokensToAward); 
+        transferCT(donor, tokensToAward);
+        emit Donated(address(this));
     }
 
     function vote(address subAccount, uint256 voteAmt) public payable {
         address donor = msg.sender;
         uint256 tokenBalance = this.checkCTBalance(donor);
         require(tokenBalance > 0, "You don't have any ChariTokens to vote");
+        
         transferCTViaVote(donor, subAccount, voteAmt); 
+        emit Voted(subAccount);
     }
 
     // allocate donations based on balance.. do we need to change? to allocate each time someone donates
