@@ -78,35 +78,43 @@ contract('Charity', function(accounts) {
         // truffleAssert.eventEmitted(displayAllocations, Allocation);
     });
 
-    //test can get CT
-    it('Charity can get CT', async() => {
-        let owner = await charityInstance.getContractOwner();
-        let getCT = await charityInstance.getCT("100000000000000000", {from:owner});
-
-        truffleAssert.eventEmitted(getCT, "GetCT");
-
-        let checkCT = await charityInstance.checkCTBalance(owner);
-        assert.strictEqual(checkCT.toNumber(), 10, "getCT not deployed correctly");
+    //test CT conversion
+    it('Eth to CT conversion calculation', async() => {
+        let amtInCT = await charityInstance.convertToCredits("100000000000000000");
+        assert.strictEqual(amtInCT.toNumber(), 10, "Conversion method calculation is wrong");
     });
 
-    //test can transfer CT from charity to donor
-    it('Charity can transfer CT to donor', async() => {
-        let owner = await charityInstance.getContractOwner();
-        let to = accounts[9];
-        let sendCT = await charityInstance.transferCT(to, 10, {from:owner});
+    // //test can get CT
+    // it('Charity can get CT', async() => {
+    //     let owner = await charityInstance.getContractOwner();
+    //     let getCT = await charityInstance.getCT("100000000000000000", {from:owner});
 
-        truffleAssert.eventEmitted(sendCT, "Transfer");
+    //     truffleAssert.eventEmitted(getCT, "GetCT");
 
-        let checkCT = await charityInstance.checkCTBalance(accounts[9]);
-        assert.strictEqual(checkCT.toNumber(), 10, "transferCT not deployed correctly");
+    //     let checkCT = await charityInstance.checkCTBalance(owner);
+    //     assert.strictEqual(checkCT.toNumber(), 10, "getCT not deployed correctly");
+    // });
 
-    });
+    // //test can transfer CT from charity to donor
+    // it('Charity can transfer CT to donor', async() => {
+    //     let owner = await charityInstance.getContractOwner();
+    //     let to = accounts[9];
+    //     let sendCT = await charityInstance.transferCT(to, 10, {from:owner});
+
+    //     truffleAssert.eventEmitted(sendCT, "Transfer");
+
+    //     let checkCT = await charityInstance.checkCTBalance(accounts[9]);
+    //     assert.strictEqual(checkCT.toNumber(), 10, "transferCT not deployed correctly");
+
+    // });
 
     //test entire donate
     it('Donors can donate', async() => {
-        let donor = accounts[9];
+        let donor = accounts[8];
         // let owner = await charityInstance.getContractOwner();
+        // console.log("About to call donate");
         let donation =  await charityInstance.donate({from:donor, value:"100000000000000000"});
+        // console.log("Donate finished");
         
         truffleAssert.eventEmitted(donation, "Donated");
 
@@ -114,11 +122,11 @@ contract('Charity', function(accounts) {
         assert.strictEqual(checkCT.toNumber(), 10, "transferCTViaVote not deployed correctly");
     });
 
-    //test can transfer CT donor to subaccount
+    //test can transfer CT donor to subaccount (voting)
     it('Donors can transfer CT to sub-account', async() => {
-        let donor = accounts[9];
+        let donor = accounts[8];
         // let owner = await charityInstance.getContractOwner();
-        let sendCTviavote =  await charityInstance.transferCTViaVote(donor, accounts[1], 2, {from:donor});
+        let sendCTviavote =  await charityInstance.transferCTViaVote(accounts[1], 2, {from:donor});
         
         truffleAssert.eventEmitted(sendCTviavote, "TransferViaVote");
 
@@ -126,10 +134,6 @@ contract('Charity', function(accounts) {
         assert.strictEqual(checkCT.toNumber(), 2, "transferCTViaVote not deployed correctly");
     });
 
-
-    
-
-    //test voting
 
 
 

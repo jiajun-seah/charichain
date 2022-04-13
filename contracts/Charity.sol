@@ -74,46 +74,52 @@ contract Charity {
     }
 
     //token integration
-    function getCT(uint256 amt) public payable ownerOnly { //an address gets CT with Eth
+    function getCT(uint256 amt) public payable { //an address gets CT with Eth
         require(amt >= 1E16, "At least 0.01ETH needed to get CT");
         uint256 val = amt/ 1E16;
         erc20instance.mint(msg.sender, val);
         emit GetCT(msg.sender, val);
     }
 
-    function transferCT(address to, uint256 amount) public {
-        erc20instance.transfer(to, amount);
-        emit Transfer(to, amount);
-    }
+    // function transferCT(address to, uint256 amount) public {
+    //     erc20instance.transfer(to, amount);
+    //     emit Transfer(to, amount);
+    // }
 
-    function transferCTViaVote(address from, address to, uint256 amount) public { 
-        erc20instance.approve(address(this), amount);
-        erc20instance.approve(from, amount);
-        erc20instance.transferFrom(from, to, amount);
+    function transferCTViaVote(address to, uint256 amount) public { //called by donor
+        // erc20instance.approve(address(this), amount);
+        // erc20instance.approve(from, amount);
+        erc20instance.transfer(to, amount);
         emit TransferViaVote(to, amount);
     }
 
     function donate() public payable {
-        address donor = msg.sender;
+        // address donor = msg.sender;
         uint256 amtDonated = msg.value;
         // address payable charityAddress = address(this);
         // charityAddress.transfer(amtDonated);
+  
 
         allocateDonations(amtDonated); //allocate donations
 
+
+
         //mint tokens to this contract, then send it to donor
         getCT(amtDonated);
-        uint256 tokensToAward = this.convertToCredits(amtDonated);
-        transferCT(donor, tokensToAward);
+ 
+        // uint256 tokensToAward = convertToCredits(amtDonated);
+        // transferCT(donor, tokensToAward);
+
+
         emit Donated(address(this));
     }
 
-    function vote(address subAccount, uint256 voteAmt) public payable {
+    function vote(address subAccount, uint256 voteAmt) public payable { //called by donor
         address donor = msg.sender;
         uint256 tokenBalance = this.checkCTBalance(donor);
         require(tokenBalance > 0, "You don't have any ChariTokens to vote");
         
-        transferCTViaVote(donor, subAccount, voteAmt); 
+        transferCTViaVote(subAccount, voteAmt); 
         emit Voted(subAccount);
     }
 
