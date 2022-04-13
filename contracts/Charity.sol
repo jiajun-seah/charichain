@@ -11,7 +11,7 @@ contract Charity {
     address[] public subAccounts;
     address _owner = msg.sender;
     uint8 public numberOfSubAccounts; //subaccounts sld not exceed 255
-    mapping(address => uint8) public subAccountPercentages; // mapping of proportion of amount donated, for each sub-account [0.1, 0.2, 0.3, 0.4] etc
+    mapping(address => uint8) public subAccountPercentages; // mapping of proportion of amount donated, for each sub-account [10, 20, 30, 40] etc
     mapping(address => bytes32) public subAccountNames; // same size as mapping above, stores the name of each subaccount for that charity
     // mapping(address => uint256) public subAccountVotes; //same size as mapping above, tracks num. of votes per subaccount for that charity
     mapping(address => uint256) public amountDonated; // mapping for amount that each person donates
@@ -24,7 +24,8 @@ contract Charity {
     mapping(address => mapping(address => bool)) hasDonated;
     mapping(address => address[]) donorList;
     //address[] public donorList;
-    uint8 campaignType; // 0 for split if not met, 1 for return to donors if not met, 2 for not started yet, 3 for done already.
+    uint8 campaignStatus; // 0 for split if not met, 1 for return to donors if not met, 2 for not started yet, 3 for done already.
+    uint8 campaignType;
     bytes32 campaignName;
 
     uint public creationTime;
@@ -40,7 +41,7 @@ contract Charity {
     constructor() {
         erc20instance = new ERC20();
         numberOfSubAccounts = 0;
-        campaignType = 3;
+        campaignStatus = 3;
     }
 
     event Allocation(address accountAddress, uint8 percentages);
@@ -53,10 +54,11 @@ contract Charity {
     event Voted(address subaccount); //event of voting for a sub-account
     
     // campaign events
-    event cannotWithdraw();
     event accountGoalHit(address account, uint256 balance, bytes32 accountName);
     event accountGoalNotHit(address account, uint256 balance, bytes32 accountName);
     event createdCampaign(bytes32 nameOfCampaign);
+    event ReleasingDepositsTransfer(uint256 amountTransferred, address account);
+    event elapsedDepositsTransfer(uint256[] splitArray);
     modifier ownerOnly() {
         require(msg.sender == _owner, "This method requires the owner to instantiate it!");
         _;
@@ -67,7 +69,7 @@ contract Charity {
             if (campaignAccountStatus[subAccounts[i]] == Stages.AcceptingDeposits && block.timestamp >= creationTime + 7 days) {
                 campaignAccountStatus[subAccounts[i]] = Stages.ElapsedDeposits;
                 emit accountGoalNotHit(subAccounts[i], subAccountBalance[subAccounts[i]], subAccountNames[subAccounts[i]]);
-                campaignType = 3;
+                campaignStatus = 3;
             }
         }
         _;
@@ -191,9 +193,8 @@ contract Charity {
 
 
     function createCampaign(bytes32 nameOfCampaign) public ownerOnly {
-        require(campaignType == 3, "There is another campaign still running.");
-        uint8 typeOfCampaign = 2;
-        campaignType = typeOfCampaign;
+        require(campaignStatus == 3, "There is another campaign still running.");
+        campaignStatus = 2; // created but not running.
         campaignName = nameOfCampaign;
         emit createdCampaign(nameOfCampaign);
     }
@@ -202,7 +203,7 @@ contract Charity {
 
     function addCampaignGoals(uint256[] memory allocations) public ownerOnly {
         require(allocations.length == numberOfSubAccounts, "You need to create a goal for each sub-account!");
-        require(campaignType == 2, "The campaign has not been created or has already started!");
+        require(campaignStatus == 2, "The campaign has not been created or has already started!");
         for (uint i = 0; i < numberOfSubAccounts; i++) {
             campaignGoals[subAccounts[i]] = allocations[i]; // allocate
         }
@@ -214,6 +215,7 @@ contract Charity {
         }
         creationTime = block.timestamp; // start timer
         campaignType = typeOfCampaign;
+        campaignStatus = typeOfCampaign;
     }
 
     function depositCampaign(bytes32 subAccount) public payable timedTransitions {
@@ -255,33 +257,49 @@ contract Charity {
                 temp = subAccounts[i]; // finding account address using bytes32, since that is fed
             }
         }
+        require(campaignAccountStatus[temp] != Stages.AcceptingDeposits, "The sub-account has not hit its target, and the time has not elapsed yet.");
         if (campaignAccountStatus[temp] == Stages.ReleasingDeposits) {
-            uint amount = subAccountBalance[temp];
+            uint256 amount = subAccountBalance[temp];
             address payable accountPayable = payable(temp);
             accountPayable.transfer(amount); // transfer is done if target is hit AND the charity rq's for transfer
+            emit ReleasingDepositsTransfer(amount, temp);
         } else if (campaignAccountStatus[temp] == Stages.ElapsedDeposits) { // its over without hitting the target.
-            uint amount = subAccountBalance[temp];
+            uint256 amount = subAccountBalance[temp];
             if (amount != 0) {
                 // two situations: split OR return to donors
                 if (campaignType == 0) {
                     uint256 amtDonated = subAccountBalance[temp];
+                    uint256[] memory splitArray = new uint256[](getNumberOfAccounts());
                     for (uint j =0; j < numberOfSubAccounts; j++) {
                         address subAccountAdd = subAccounts[j];
                         uint8 ratio = subAccountPercentages[subAccountAdd];
                         address payable subAccountAddPayable = payable(subAccountAdd);
-                        subAccountAddPayable.transfer((ratio / 100) * amtDonated);
+                        subAccountAddPayable.transfer((ratio * amtDonated / 100));
+                        splitArray[j] = (ratio * amtDonated / 100) ;
                     }
+                    emit elapsedDepositsTransfer(splitArray);
                 } else if (campaignType == 1) { // return to donors.
+                    uint256[] memory splitArray = new uint256[](getDonorListLength(temp));
                     for (uint k = 0; k < donorList[temp].length; k++) {
                         uint256 amtToReturn = donorsBalance[temp][donorList[temp][k]];
                         address payable accountPayable = payable(donorList[temp][k]);
                         accountPayable.transfer(amtToReturn);
-                    } 
+                        splitArray[k] = amtToReturn;
+                    }
+                    emit elapsedDepositsTransfer(splitArray);
                 }
             }
-        } else if (campaignAccountStatus[temp] == Stages.AcceptingDeposits) {
-            emit cannotWithdraw();
+        } 
+    }
+    // function purely for demo purposes!
+
+    function fastForwardCampaignStates() public {
+        for (uint i = 0; i < numberOfSubAccounts; i++) {
+            if (campaignAccountStatus[subAccounts[i]] == Stages.AcceptingDeposits) {
+                campaignAccountStatus[subAccounts[i]] = Stages.ElapsedDeposits;
+            }
         }
+        campaignStatus = 3;
     }
 
 
@@ -293,16 +311,19 @@ contract Charity {
 
 
      // getter for allocation
-    function showAllocation() public {
+    function showAllocation() public returns (uint8[] memory allocations){
+        uint8[] memory listOfAllocations = new uint8[](getNumberOfAccounts());
         for(uint i = 0; i < subAccounts.length; i++) {
             address tempAddress = subAccounts[i];
             uint8 tempAllocation = subAccountPercentages[tempAddress];
+            listOfAllocations[i] = tempAllocation;
             emit Allocation(tempAddress, tempAllocation);
         }
+        return listOfAllocations;
     }
 
     // a general check on how much money the person has put, and how it has been spread
-    function getProportions() public view returns (uint[] memory xd) {
+    function getProportions() public view returns (uint[] memory proportions) {
         uint[] memory listOfProportions = new uint[](getNumberOfAccounts());
         for (uint256 i = 0; i < getNumberOfAccounts(); i++) {
             listOfProportions[i] = subAccountPercentages[subAccounts[i]] * amountDonated[msg.sender]; // "Food, 100" e.g.
@@ -312,7 +333,7 @@ contract Charity {
     
    
     
-    function getAccountsInOrder() public view returns (bytes32[] memory xd) {
+    function getAccountsInOrder() public view returns (bytes32[] memory accounts) {
         bytes32[] memory listOfAccounts = new bytes32[](getNumberOfAccounts());
         for (uint256 i = 0; i < getNumberOfAccounts(); i++) {
             listOfAccounts[i] = (subAccountNames[subAccounts[i]]); // "Food, 100" e.g.
@@ -323,7 +344,7 @@ contract Charity {
 
     // given an amount, how much is going to which acc? a way for donors to check where amounts are gg before they donate. 
     //combine with getAccountsInOrder() as well, to find out where in which account
-    function checkAmount(uint256 amt) public view returns (uint[] memory xd) {
+    function checkAmount(uint256 amt) public view returns (uint[] memory amounts) {
         uint[] memory listOfAmounts = new uint[](getNumberOfAccounts());
         for (uint256 i = 0; i < getNumberOfAccounts(); i++) {
             listOfAmounts[i] = (subAccountPercentages[subAccounts[i]] * amt);
@@ -350,6 +371,10 @@ contract Charity {
         return subAccountBalance[temp];
     }
 
+    function getCampaignStatus() public view returns (uint8) {
+        return campaignStatus;
+    }
+
     function getCampaignType() public view returns (uint8) {
         return campaignType;
     }
@@ -362,6 +387,37 @@ contract Charity {
         }
         return goals;
     }
+
+    function getDonorsBalance(bytes32 subAccountName, address sender) public view returns (uint256) {
+        address temp;
+        for (uint i = 0; i < numberOfSubAccounts; i++) {
+            if (subAccountNames[subAccounts[i]] == subAccountName) {
+                temp = subAccounts[i]; // finding account address using bytes32, since that is fed
+            }
+        }
+        return donorsBalance[temp][sender];
+    }
+
+    function getStages() public view returns (bytes32[] memory listOfStages) { // used for charity and donors to monitor status.
+        bytes32[] memory stageList = new bytes32[](getNumberOfAccounts());
+        for (uint i = 0; i < numberOfSubAccounts; i++) {
+            string memory text;
+            if (campaignAccountStatus[subAccounts[i]] == Stages.AcceptingDeposits) {
+                text = "Accepting Deposits";
+            } else if (campaignAccountStatus[subAccounts[i]] == Stages.ReleasingDeposits) {
+                text = "Releasing Deposits";
+            } else {
+                text = "Elapsed Deposits";
+            }
+            stageList[i] = bytes32(bytes(text));
+        }
+        return stageList;
+    }
+
+    function getDonorListLength(address subAccount) public view returns (uint256) {
+        return donorList[subAccount].length;
+    }
+
 
     function checkVoteOutcome() public payable returns(uint256[] memory vc) {
         uint256[] memory voteCounts = new uint256[](getNumberOfAccounts());
