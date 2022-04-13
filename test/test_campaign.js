@@ -4,8 +4,6 @@ var assert = require('assert');
 
 var Charity = artifacts.require("../contracts/Charity.sol");
 var ERC20 = artifacts.require("../contracts/ERC20.sol");
-var ChariToken = artifacts.require("../contracts/ChariToken.sol");
-var Donor = artifacts.require("../contracts/Donor.sol");
 const ethers = require('ethers')
 const utils = ethers.utils
 
