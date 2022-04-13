@@ -4,11 +4,10 @@ pragma abicoder v2;
 
 // import "./ChariToken.sol";
 import './ERC20.sol';
-import "./Campaign.sol";
 
 contract Charity {
     // ChariToken tokenContract;
-    Campaign campaignContract;
+    //Campaign campaignContract;
     address[] public subAccounts;
     address _owner = msg.sender;
     uint8 public numberOfSubAccounts; //subaccounts sld not exceed 255
@@ -17,12 +16,31 @@ contract Charity {
     // mapping(address => uint256) public subAccountVotes; //same size as mapping above, tracks num. of votes per subaccount for that charity
     mapping(address => uint256) public amountDonated; // mapping for amount that each person donates
 
+    // campaign vars
+    mapping(address => uint256) subAccountBalance; // Maps addreess of account => account balance. Can switch to address => balance mapping if that is used more (one less conversion step).
+    mapping(address => uint256) campaignGoals; // Maps account => goal for that account.
+    mapping(address => Stages) campaignAccountStatus; // Maps address to current stage.
+    mapping(address => mapping(address => uint256)) donorsBalance; // how much each donor has donated
+    mapping(address => mapping(address => bool)) hasDonated;
+    mapping(address => address[]) donorList;
+    //address[] public donorList;
+    uint8 campaignType; // 0 for split if not met, 1 for return to donors if not met, 2 for not started yet, 3 for done already.
+    bytes32 campaignName;
+
+    uint public creationTime;
+    enum Stages {
+        AcceptingDeposits,
+        ReleasingDeposits,
+        ElapsedDeposits
+    }
+
     //Token integration
     ERC20 erc20instance;
 
     constructor() {
         erc20instance = new ERC20();
         numberOfSubAccounts = 0;
+        campaignType = 3;
     }
 
     event Allocation(address accountAddress, uint8 percentages);
@@ -34,9 +52,24 @@ contract Charity {
     event Donated(address mainAccount); //event of voting for a sub-account
     event Voted(address subaccount); //event of voting for a sub-account
     
-    
+    // campaign events
+    event cannotWithdraw();
+    event accountGoalHit(address account, uint256 balance, bytes32 accountName);
+    event accountGoalNotHit(address account, uint256 balance, bytes32 accountName);
+    event createdCampaign(bytes32 nameOfCampaign);
     modifier ownerOnly() {
-        require(msg.sender == _owner);
+        require(msg.sender == _owner, "This method requires the owner to instantiate it!");
+        _;
+    }
+
+    modifier timedTransitions() {
+        for (uint i = 0; i < numberOfSubAccounts; i++) {
+            if (campaignAccountStatus[subAccounts[i]] == Stages.AcceptingDeposits && block.timestamp >= creationTime + 7 days) {
+                campaignAccountStatus[subAccounts[i]] = Stages.ElapsedDeposits;
+                emit accountGoalNotHit(subAccounts[i], subAccountBalance[subAccounts[i]], subAccountNames[subAccounts[i]]);
+                campaignType = 3;
+            }
+        }
         _;
     }
     // Function to receive Ether. msg.data must be empty
@@ -151,34 +184,98 @@ contract Charity {
     // }
 
 
-    function createCampaign(bytes32 campaignName) public ownerOnly() {
-        uint8[] memory percentages = new uint8[](getNumberOfAccounts());
-        bytes32[] memory names = new bytes32[](getNumberOfAccounts());
-        for (uint i = 0; i < getNumberOfAccounts(); i++) {
-            percentages[i] = subAccountPercentages[subAccounts[i]];
-            names[i] = subAccountNames[subAccounts[i]];
-        }
-        uint8 campaignType = 2;
-        Campaign c = new Campaign(subAccounts, numberOfSubAccounts, percentages, names, campaignType, campaignName);
-        campaignContract = c;
+    function createCampaign(bytes32 nameOfCampaign) public ownerOnly {
+        require(campaignType == 3, "There is another campaign still running.");
+        uint8 typeOfCampaign = 2;
+        campaignType = typeOfCampaign;
+        campaignName = nameOfCampaign;
+        emit createdCampaign(nameOfCampaign);
     }
 
 /* Campaign section */
 
-    function addCampaignGoals(uint256[] memory allocations) public{
-        campaignContract.addCampaignGoals(allocations);
+    function addCampaignGoals(uint256[] memory allocations) public ownerOnly {
+        require(allocations.length == numberOfSubAccounts, "You need to create a goal for each sub-account!");
+        require(campaignType == 2, "The campaign has not been created or has already started!");
+        for (uint i = 0; i < numberOfSubAccounts; i++) {
+            campaignGoals[subAccounts[i]] = allocations[i]; // allocate
+        }
     }
 
-    function startCampaign(uint8 typeOfCampaign) public {
-        campaignContract.startCampaign(typeOfCampaign);
+    function startCampaign(uint8 typeOfCampaign) public ownerOnly {
+        for (uint i = 0; i < numberOfSubAccounts; i++) {
+            campaignAccountStatus[subAccounts[i]] = Stages.AcceptingDeposits;
+        }
+        creationTime = block.timestamp; // start timer
+        campaignType = typeOfCampaign;
     }
 
-    function depositCampaign(bytes32 subAccount) public payable {
-        campaignContract.depositCampaign(subAccount);
+    function depositCampaign(bytes32 subAccount) public payable timedTransitions {
+        address temp;
+        for (uint i = 0; i < numberOfSubAccounts; i++) {
+            if (subAccountNames[subAccounts[i]] == subAccount) {
+                temp = subAccounts[i]; // finding account address using string, since that is fed
+            }
+        }
+        require(campaignAccountStatus[temp] == Stages.AcceptingDeposits, "The campaign has either finished or has been fulfilled.");
+        uint256 existingBalance = subAccountBalance[temp]; // update sub account
+        if (existingBalance != 0) {
+            existingBalance += msg.value;
+        } else {
+            existingBalance = msg.value;
+        }
+        subAccountBalance[temp] = existingBalance;
+        if (existingBalance >= campaignGoals[temp]) {
+            campaignAccountStatus[temp] = Stages.ReleasingDeposits; // met the criteria already. release now? or wait for cue
+            emit accountGoalHit(temp, existingBalance, subAccount);
+        }
+        if (hasDonated[temp][msg.sender] != true) {
+            hasDonated[temp][msg.sender] = true;
+            donorList[temp].push(msg.sender); // add to address list
+        }
+        uint256 donorBalance = donorsBalance[temp][msg.sender]; // update amount donated
+        if (donorBalance != 0) {
+            donorBalance += msg.value;
+        } else {
+            donorBalance = msg.value;
+        }
+        donorsBalance[temp][msg.sender] = donorBalance;
     }
 
-    function withdrawCampaign(bytes32 subAccount) public {
-        campaignContract.withdrawCampaign(subAccount);
+    function withdrawCampaign(bytes32 subAccount) public timedTransitions ownerOnly { // if charity wants to withdraw
+        address temp;
+        for (uint i = 0; i < numberOfSubAccounts; i++) {
+            if (subAccountNames[subAccounts[i]] == subAccount) {
+                temp = subAccounts[i]; // finding account address using bytes32, since that is fed
+            }
+        }
+        if (campaignAccountStatus[temp] == Stages.ReleasingDeposits) {
+            uint amount = subAccountBalance[temp];
+            address payable accountPayable = payable(temp);
+            accountPayable.transfer(amount); // transfer is done if target is hit AND the charity rq's for transfer
+        } else if (campaignAccountStatus[temp] == Stages.ElapsedDeposits) { // its over without hitting the target.
+            uint amount = subAccountBalance[temp];
+            if (amount != 0) {
+                // two situations: split OR return to donors
+                if (campaignType == 0) {
+                    uint256 amtDonated = subAccountBalance[temp];
+                    for (uint j =0; j < numberOfSubAccounts; j++) {
+                        address subAccountAdd = subAccounts[j];
+                        uint8 ratio = subAccountPercentages[subAccountAdd];
+                        address payable subAccountAddPayable = payable(subAccountAdd);
+                        subAccountAddPayable.transfer((ratio / 100) * amtDonated);
+                    }
+                } else if (campaignType == 1) { // return to donors.
+                    for (uint k = 0; k < donorList[temp].length; k++) {
+                        uint256 amtToReturn = donorsBalance[temp][donorList[temp][k]];
+                        address payable accountPayable = payable(donorList[temp][k]);
+                        accountPayable.transfer(amtToReturn);
+                    } 
+                }
+            }
+        } else if (campaignAccountStatus[temp] == Stages.AcceptingDeposits) {
+            emit cannotWithdraw();
+        }
     }
 
 
@@ -238,12 +335,27 @@ contract Charity {
     }
 
     function getSubAccountBalance(bytes32 subAccountName) public view returns(uint256) {
-        return campaignContract.getSubAccountBalance(subAccountName);
+        address temp;
+        for (uint i = 0; i < numberOfSubAccounts; i++) {
+            if (subAccountNames[subAccounts[i]] == subAccountName) {
+                temp = subAccounts[i]; // finding account address using bytes32, since that is fed
+            }
+        }
+        return subAccountBalance[temp];
     }
 
-     function getCampaignType() public view returns (uint8) {
-         return campaignContract.getCampaignType();
-     }
+    function getCampaignType() public view returns (uint8) {
+        return campaignType;
+    }
+
+    function getCampaignGoals() public view returns (uint256[] memory tc) {
+        uint256[] memory goals = new uint256[](getNumberOfAccounts());
+        for (uint256 i = 0; i < getNumberOfAccounts(); i++) {
+            uint256 currentGoal = campaignGoals[subAccounts[i]];
+            goals[i] = currentGoal;
+        }
+        return goals;
+    }
 
     function checkVoteOutcome() public payable returns(uint256[] memory vc) {
         uint256[] memory voteCounts = new uint256[](getNumberOfAccounts());
