@@ -51,6 +51,7 @@ contract Charity {
     // event TokenSent(address sender, uint256 amt); //event of Charity sending CT to donor
     event Donated(address mainAccount); //event of voting for a sub-account
     event Voted(address subaccount); //event of voting for a sub-account
+    // event Amount(uint256 amt);
     
     // campaign events
     event cannotWithdraw();
@@ -73,10 +74,10 @@ contract Charity {
         _;
     }
     // Function to receive Ether. msg.data must be empty
-    // receive() external payable {} // might need to change imo.... because we need to store senders
+    receive() external payable {} // might need to change imo.... because we need to store senders
 
-    // // Fallback function is called when msg.data is not empty
-    // fallback() external payable {}
+    // Fallback function is called when msg.data is not empty
+    fallback() external payable {}
     
     // creation of sub-accounts for a single charity
     function createSubAccount(address accountAddress, bytes32 accountName) public ownerOnly{
@@ -127,22 +128,13 @@ contract Charity {
     }
 
     function donate() public payable {
-        // address donor = msg.sender;
         uint256 amtDonated = msg.value;
-        // address payable charityAddress = address(this);
-        // charityAddress.transfer(amtDonated);
-  
 
-        allocateDonations(amtDonated); //allocate donations
+        //allocate donations
+        allocateDonations(amtDonated); 
 
-
-
-        //mint tokens to this contract, then send it to donor
+        //mint tokens to donor
         getCT(amtDonated);
- 
-        // uint256 tokensToAward = convertToCredits(amtDonated);
-        // transferCT(donor, tokensToAward);
-
 
         emit Donated(address(this));
     }
@@ -150,24 +142,24 @@ contract Charity {
     function vote(address subAccount, uint256 voteAmt) public payable { //called by donor
         address donor = msg.sender;
         uint256 tokenBalance = this.checkCTBalance(donor);
-        require(tokenBalance > 0, "You don't have any ChariTokens to vote");
+        require(tokenBalance > voteAmt, "You don't have enough ChariTokens to vote");
         
         transferCTViaVote(subAccount, voteAmt); 
         emit Voted(subAccount);
     }
 
-    // allocate donations based on balance.. do we need to change? to allocate each time someone donates
+    // allocate donations based on balance.
     function allocateDonations(uint256 amtDonated) public payable {
         // uint256 amtDonated = getBalance();
         for (uint i =0; i < numberOfSubAccounts; i++) {
             address subAccountAdd = subAccounts[i]; // subaccount in question currently
             uint8 ratio = subAccountPercentages[subAccountAdd];
             address payable subAccountAddPayable = payable(subAccountAdd);
-            subAccountAddPayable.transfer((ratio/100)*amtDonated);
+            subAccountAddPayable.transfer(ratio * amtDonated / 100);
+            
+            // emit Amount(subAccountAddPayable.balance);
         }
     }
-
-
 
     //this is a unit conversion function that converts amount of ether into DTs
     function convertToCredits(uint256 etherAmount) public pure returns(uint256) {
@@ -177,18 +169,6 @@ contract Charity {
     function checkCTBalance(address user) public view returns(uint256) {
         return erc20instance.balanceOf(user);
     }
-
-
-    //process donations: split donations and award donor with tokens
-    // function processDonations(uint256 amtDonated, address donor) public payable {
-    //     this.allocateDonations(amtDonated); //allocate donations
-
-    //     //mint tokens to this contract, then send it to donor
-    //     tokenContract.getCredit(amtDonated);
-    //     uint256 tokensToAward = tokenContract.convertToCredits(amtDonated);
-    //     tokenContract.getErc20Contract().transfer(donor, tokensToAward); 
-    // }
-
 
     function createCampaign(bytes32 nameOfCampaign) public ownerOnly {
         require(campaignType == 3, "There is another campaign still running.");
@@ -291,14 +271,21 @@ contract Charity {
         return _owner;
     }
 
+    function getContractAddress() public view returns(address){
+        return address(this);
+    }
+
 
      // getter for allocation
-    function showAllocation() public {
+    function showAllocation() public returns (uint8[] memory allocations){
+        uint8[] memory listOfAllocations = new uint8[](getNumberOfAccounts());
         for(uint i = 0; i < subAccounts.length; i++) {
             address tempAddress = subAccounts[i];
             uint8 tempAllocation = subAccountPercentages[tempAddress];
+            listOfAllocations[i] = tempAllocation;
             emit Allocation(tempAddress, tempAllocation);
         }
+        return listOfAllocations;
     }
 
     // a general check on how much money the person has put, and how it has been spread
