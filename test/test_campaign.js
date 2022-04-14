@@ -52,6 +52,30 @@ contract('Campaign', function(accounts) {
         )
     });
 
+    it('Correct number of sub-accounts', async() => {
+        nSubAccounts = await charityInstance.getNumberOfAccounts();
+        // console.log(nSubAccounts)
+        assert.strictEqual(
+            nSubAccounts.toNumber(),
+            3,
+            "Wrong number of sub-accounts created"
+        )
+
+    });
+
+    //test sub-account percentages configuration
+    it('Cannot assign invalid percentages (wrong size of array)', async() => {
+        let percentageArray = [40, 30];
+        // await charityInstance.allocatePercentages(percentageArray);
+        await truffleAssert.reverts(charityInstance.allocatePercentages(percentageArray), "Length of input differs from number of sub-accounts")
+    });
+
+    //test sub-account percentages configuration
+    it('Cannot assign invalid percentages (does not sum to 100)', async() => {
+        let percentageArray = [40, 30, 20];
+        // await charityInstance.allocatePercentages(percentageArray);
+        await truffleAssert.reverts(charityInstance.allocatePercentages(percentageArray), "Your percentages does not add up to 100")
+    });
     // 2) allocate percentages to each sub account using allocatePercentages[]
 
     it('Allocate sub-account percentages', async() => {
@@ -69,6 +93,8 @@ contract('Campaign', function(accounts) {
 
     //3) create campaign (make sure owner instantiates),
 
+
+    // PART 4 END: FROM HERE ON COMMENT TILL NEXT MENTION OF PART 4
     it("Create campaign, not from owner", async() => {
         const nameOfCampaign = utils.formatBytes32String("Charity Drive")
         await truffleAssert.reverts(charityInstance.createCampaign(nameOfCampaign, {from: accounts[3]}), "This method requires the owner to instantiate it!")
@@ -78,29 +104,18 @@ contract('Campaign', function(accounts) {
         let owner = await charityInstance.getContractOwner();
         const nameOfCampaign = utils.formatBytes32String("Charity Drive")
         let campaign = await charityInstance.createCampaign(nameOfCampaign, {from: owner});
-        truffleAssert.eventEmitted(campaign, "createdCampaign");
-    })
-
-    // we will be unable to add a campaign again. 
-
-    it("Create campaign again after campaign has been created", async() => {
-        let owner = await charityInstance.getContractOwner();
-        const nameOfCampaign = utils.formatBytes32String("Charity Drive")
-        await truffleAssert.reverts(charityInstance.createCampaign(nameOfCampaign, {from: owner}), "There is another campaign still running.")
-    })
-
-    //4) Add campaign goals
-
-    it("Add campaign goals, not from owner", async() => {
-        let subAccountGoals = ["2000000000000000000", "2000000000000000000", "2000000000000000000"];
-        await truffleAssert.reverts(charityInstance.addCampaignGoals(subAccountGoals, {from: accounts[3]}), "This method requires the owner to instantiate it!")
-    })
-
-    it("Add campaign goals, from owner", async() => {
-        let owner = await charityInstance.getContractOwner();
         let subAccountGoals = ["2000000000000000000", "3000000000000000000", "4000000000000000000"];
         await charityInstance.addCampaignGoals(subAccountGoals, {from: owner});
         let campaignGoals = await charityInstance.getCampaignGoals();
+
+        let campaignType = 0;
+        await charityInstance.startCampaign(campaignType, {from: owner})
+        let storedCampaignType = await charityInstance.getCampaignType();
+        assert.equal(
+            storedCampaignType.toNumber(),
+            0,
+            "Campaign type not assigned."
+        )
         assert.equal(
             campaignGoals[0],
             "2000000000000000000",
@@ -116,27 +131,17 @@ contract('Campaign', function(accounts) {
             "4000000000000000000",
             "The goal is not allocated."
         )
+        truffleAssert.eventEmitted(campaign, "createdCampaign");
     })
 
+    // we will be unable to add a campaign again. 
 
-    //5) Start campaign (we first simulate a split campaign)
+    // it("Create campaign again after campaign has been created", async() => {
+    //     let owner = await charityInstance.getContractOwner();
+    //     const nameOfCampaign = utils.formatBytes32String("Charity Drive")
+    //     await truffleAssert.reverts(charityInstance.createCampaign(nameOfCampaign, {from: owner}), "There is another campaign still running.")
+    // })
 
-    it("Start campaign, not from owner", async() => {
-        let campaignType = 0; // split campaign
-        await truffleAssert.reverts(charityInstance.startCampaign(campaignType, {from: accounts[2]}), "This method requires the owner to instantiate it!")
-    })
-
-    it("Start campaign, from owner", async() => {
-        let owner = await charityInstance.getContractOwner();
-        let campaignType = 0;
-        await charityInstance.startCampaign(campaignType, {from: owner})
-        let storedCampaignType = await charityInstance.getCampaignType();
-        assert.equal(
-            storedCampaignType.toNumber(),
-            0,
-            "Campaign type not assigned."
-        )
-    })
 
     // extra cases: cannot change campaign goal if already started campaign.
     it("Add campaign goals although campaign already started", async() => {
@@ -145,6 +150,8 @@ contract('Campaign', function(accounts) {
         await truffleAssert.reverts(charityInstance.addCampaignGoals(subAccountGoals, {from: owner}), "The campaign has not been created or has already started!")
     })
 
+    // END OF PART 1
+    // FOR PART 3: INCLUDE EVERYTHING BEFORE THIS
     
     //6) Donate to a sub account, leave it as Accepting still
 
@@ -217,7 +224,7 @@ contract('Campaign', function(accounts) {
     })
 
     // PURELY for demo purposes. we change stage of remaining accounts to Elapsed. Normally this takes 7 days
-    it("Change remaining sub-accounts to elapsed deposits, automatic withdrawal", async() => { 
+    it("Change remaining sub-accounts to elapsed deposits", async() => { 
         await charityInstance.fastForwardCampaignStates() // 1 ether out of 2
         let arrayOfStages = await charityInstance.getStages(); 
         // updates sub wallet "Water" and "Building materials" to elapsed. (indexes 1 and 2 respectively). "Food" is already accepting deposits so we do nothing to it.
@@ -254,6 +261,8 @@ contract('Campaign', function(accounts) {
         })
     })
 
+    // END OF PART 3
+    // PART 4 CONTINUES AGAIN
     it("Reset campaign", async() => { 
         let owner = await charityInstance.getContractOwner();
         const nameOfCampaign = utils.formatBytes32String("Charity Drive 2")
