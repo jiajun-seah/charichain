@@ -72,6 +72,7 @@ contract Charity {
         for (uint i = 0; i < numberOfSubAccounts; i++) {
             if (campaignAccountStatus[subAccounts[i]] == Stages.AcceptingDeposits && block.timestamp >= creationTime + 7 days) {
                 campaignAccountStatus[subAccounts[i]] = Stages.ElapsedDeposits;
+                // *withdrawn for demo purposes  withdrawCampaign(subAccountNames[subAccounts[i]]);
                 emit accountGoalNotHit(subAccounts[i], subAccountBalance[subAccounts[i]], subAccountNames[subAccounts[i]]);
                 campaignStatus = 3;
             }
@@ -245,6 +246,14 @@ contract Charity {
             uint256 amount = subAccountBalance[temp];
             address payable accountPayable = payable(temp);
             accountPayable.transfer(amount); // transfer is done if target is hit AND the charity rq's for transfer
+            subAccountBalance[temp] = 0;
+            address[] memory addressList = donorList[temp];
+            for (uint i = 0; i < addressList.length; i++) {
+                address currentDonor = addressList[i];
+                donorsBalance[temp][currentDonor] = 0;
+                hasDonated[temp][currentDonor] = false;
+            }
+            delete donorList[temp];
             emit ReleasingDepositsTransfer(amount, temp);
         } else if (campaignAccountStatus[temp] == Stages.ElapsedDeposits) { // its over without hitting the target.
             uint256 amount = subAccountBalance[temp];
@@ -260,6 +269,14 @@ contract Charity {
                         subAccountAddPayable.transfer((ratio * amtDonated / 100));
                         splitArray[j] = (ratio * amtDonated / 100) ;
                     }
+                    subAccountBalance[temp] = 0;
+                    address[] memory addressList = donorList[temp];
+                    for (uint i = 0; i < addressList.length; i++) {
+                        address currentDonor = addressList[i];
+                        donorsBalance[temp][currentDonor] = 0;
+                        hasDonated[temp][currentDonor] = false;
+                    }
+                    delete donorList[temp];
                     emit elapsedDepositsTransfer(splitArray);
                 } else if (campaignType == 1) { // return to donors.
                     uint256[] memory splitArray = new uint256[](getDonorListLength(temp));
@@ -269,6 +286,14 @@ contract Charity {
                         accountPayable.transfer(amtToReturn);
                         splitArray[k] = amtToReturn;
                     }
+                    subAccountBalance[temp] = 0;
+                    address[] memory addressList = donorList[temp];
+                    for (uint i = 0; i < addressList.length; i++) {
+                        address currentDonor = addressList[i];
+                        donorsBalance[temp][currentDonor] = 0;
+                        hasDonated[temp][currentDonor] = false;
+                    }
+                    delete donorList[temp];
                     emit elapsedDepositsTransfer(splitArray);
                 }
             }
@@ -280,6 +305,7 @@ contract Charity {
         for (uint i = 0; i < numberOfSubAccounts; i++) {
             if (campaignAccountStatus[subAccounts[i]] == Stages.AcceptingDeposits) {
                 campaignAccountStatus[subAccounts[i]] = Stages.ElapsedDeposits;
+                // withdrawCampaign(subAccountNames[subAccounts[i]]);
             }
         }
         campaignStatus = 3;
