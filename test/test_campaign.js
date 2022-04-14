@@ -24,7 +24,7 @@ contract('Campaign', function(accounts) {
         let owner = await charityInstance.getContractOwner();
         const subAccount1 = utils.formatBytes32String("Food")
         const subAccount2 = utils.formatBytes32String("Water")
-        const subAccount3 = utils.formatBytes32String("Building Materials")
+        const subAccount3 = utils.formatBytes32String("Materials")
         let makeS1 = await charityInstance.createSubAccount(accounts[1],
         subAccount1,
         {from: owner});
@@ -176,7 +176,7 @@ contract('Campaign', function(accounts) {
     // 7) Donate to the sub account, until it hits the amount enough to withdraw
     it("Deposit into sub account such that it hits its goal", async() => {
         const subAccount = utils.formatBytes32String("Food")
-        let campaign = await charityInstance.depositCampaign(subAccount, {from: accounts[4], value: "1000000000000000000"}) // 1 ether out of 2
+        let campaign = await charityInstance.depositCampaign(subAccount, {from: accounts[4], value: "1500000000000000000"}) // 2.5 ether out of 2 total, should change to releasing dep
         const stageToVerify = utils.formatBytes32String("Releasing Deposits");
         let arrayOfStages = await charityInstance.getStages();
         assert.equal(
@@ -190,35 +190,34 @@ contract('Campaign', function(accounts) {
     it("Withdraw from Releasing Deposits sub account", async() => {
         let owner = await charityInstance.getContractOwner();
         const subAccount = utils.formatBytes32String("Food")
-        let withdrawal = await charityInstance.withdrawCampaign(subAccount, {from: owner}) // 1 ether out of 2
-        truffleAssert.eventEmitted(withdrawal, "ReleasingDepositsTransfer"); // emitted when transfer is done. Show increase in ether balance in Ganache
+        let withdrawal = await charityInstance.withdrawCampaign(subAccount, {from: owner}) 
+        truffleAssert.eventEmitted(withdrawal, "ReleasingDepositsTransfer", (ev) => {
+            return ev.amountTransferred == "2500000000000000000"
+        }) // emitted when transfer is done. Show increase in ether balance in Ganache (2 ether)
     })
 
     // simulating elapsed deposits: first depositing an amount that does not hit goals in remaining accounts
     it("Donate to rest of the sub accounts, but do not hit goal", async() => {
         const subAccount1 = utils.formatBytes32String("Water")
-        const subAccount2 = utils.formatBytes32String("Building Materials")
-        await charityInstance.depositCampaign(subAccount1, {from: accounts[5], value: "1000000000000000000"}) // 2 ether out of 3
-        await charityInstance.depositCampaign(subAccount2, {from: accounts[5], value: "1000000000000000000"}) // 2 ether out of 3
-
-        await charityInstance.depositCampaign(subAccount1, {from: accounts[6], value: "1000000000000000000"}) // 2 ether out of 4
-        await charityInstance.depositCampaign(subAccount2, {from: accounts[6], value: "1000000000000000000"}) // 2 ether out of 4
-        let amountInCampaign1 = await charityInstance.getSubAccountBalance(subAccount1);
-        let amountInCampaign2 = await charityInstance.getSubAccountBalance(subAccount2);
+        const subAccount2 = utils.formatBytes32String("Materials")
+        await charityInstance.depositCampaign(subAccount1, {from: accounts[5], value: "2000000000000000000"}) // 2 ether out of 3
+        await charityInstance.depositCampaign(subAccount2, {from: accounts[6], value: "2000000000000000000"}) // 2 ether out of 3
+        let amountInSubAccount1 = await charityInstance.getSubAccountBalance(subAccount1);
+        let amountInSubAccount2 = await charityInstance.getSubAccountBalance(subAccount2);
         assert.equal(
-            amountInCampaign1,
+            amountInSubAccount1,
             "2000000000000000000",
             "Donation did not go through."
         )
         assert.equal(
-            amountInCampaign2,
+            amountInSubAccount2,
             "2000000000000000000",
             "Donation did not go through."
         )
     })
 
     // PURELY for demo purposes. we change stage of remaining accounts to Elapsed. Normally this takes 7 days
-    it("Change remaining sub-accounts to elapsed deposits", async() => { 
+    it("Change remaining sub-accounts to elapsed deposits, automatic withdrawal", async() => { 
         await charityInstance.fastForwardCampaignStates() // 1 ether out of 2
         let arrayOfStages = await charityInstance.getStages(); 
         // updates sub wallet "Water" and "Building materials" to elapsed. (indexes 1 and 2 respectively). "Food" is already accepting deposits so we do nothing to it.
@@ -239,7 +238,7 @@ contract('Campaign', function(accounts) {
     it("Withdraw from Elapsed Deposits sub-accounts", async() => {
         let owner = await charityInstance.getContractOwner();
         const subAccount1 = utils.formatBytes32String("Water")
-        const subAccount2 = utils.formatBytes32String("Building Materials")
+        const subAccount2 = utils.formatBytes32String("Materials")
         let withdrawal1 = await charityInstance.withdrawCampaign(subAccount1, {from: owner}) 
         let withdrawal2 = await charityInstance.withdrawCampaign(subAccount2, {from: owner}) 
 
@@ -247,8 +246,12 @@ contract('Campaign', function(accounts) {
         // let balance2 = await charityInstance.getSubAccountBalance(subAccount2);
         // let allocationPercentage = await charityInstance.showAllocation();
         //let totalSum = balance1 + balance2; // this is the total pool to be distributed       
-        truffleAssert.eventEmitted(withdrawal1, "elapsedDepositsTransfer")
-        // more testing could have been done here but there seems to be issue with allocation percentage
+        truffleAssert.eventEmitted(withdrawal1, "elapsedDepositsTransfer", (ev) => {
+            return ev.splitArray[0] == "800000000000000000" && ev.splitArray[1] == "600000000000000000" // 2 ether split into 0.8, 0.6, 0.6
+        })
+        truffleAssert.eventEmitted(withdrawal2, "elapsedDepositsTransfer", (ev) => {
+            return ev.splitArray[0] == "800000000000000000" && ev.splitArray[1] == "600000000000000000" // 2 ether split into 0.8, 0.6, 0.6
+        })
     })
 
     it("Reset campaign", async() => { 
@@ -281,5 +284,108 @@ contract('Campaign', function(accounts) {
     })
 
     // start campaign type 1, donate, then check if the function for returning to donors is working properly.
+    it("Start campaign, from owner", async() => {
+        let owner = await charityInstance.getContractOwner();
+        let campaignType = 1;
+        await charityInstance.startCampaign(campaignType, {from: owner})
+        let storedCampaignType = await charityInstance.getCampaignType();
+        assert.equal(
+            storedCampaignType.toNumber(),
+            1,
+            "Campaign type not assigned."
+        )
+    })
+
+    it("Donate to sub account, meeting the goal", async() => {
+        const subAccount = utils.formatBytes32String("Food")
+        await charityInstance.depositCampaign(subAccount, {from: accounts[4], value: "1000000000000000000"}) // 1 ether out of 1, goal met.
+        let amountInCampaign = await charityInstance.getSubAccountBalance(subAccount);
+        let amountDonorDonated = await charityInstance.getDonorsBalance(subAccount, accounts[4])
+        const stageToVerify = utils.formatBytes32String("Releasing Deposits");
+        let arrayOfStages = await charityInstance.getStages();
+        assert.equal(
+            stageToVerify,
+            arrayOfStages[0], // stage corresponding to food (first sub-account)
+            "The stage has not been updated"
+        )
+        assert.equal(
+            amountInCampaign,
+            "1000000000000000000",
+            "Donation did not go through."
+        )
+        assert.equal(
+            amountDonorDonated,
+            "1000000000000000000",
+            "Donation did not go through."
+        )
+    })
+
+
+    it("Withdraw from Releasing Deposits sub account", async() => {
+        let owner = await charityInstance.getContractOwner();
+        const subAccount = utils.formatBytes32String("Food")
+        let withdrawal = await charityInstance.withdrawCampaign(subAccount, {from: owner}) 
+        truffleAssert.eventEmitted(withdrawal, "ReleasingDepositsTransfer", (ev) => {
+            return ev.amountTransferred == "1000000000000000000"
+        }) // emitted when transfer is done. Show increase in ether balance in Ganache (2 ether)
+    })
+
+
+    it("Donate to rest of the sub accounts, but do not hit goal", async() => {
+        const subAccount1 = utils.formatBytes32String("Water")
+        const subAccount2 = utils.formatBytes32String("Materials")
+        await charityInstance.depositCampaign(subAccount1, {from: accounts[5], value: "500000000000000000"}) 
+        await charityInstance.depositCampaign(subAccount1, {from: accounts[6], value: "500000000000000000"}) // 1 ether out of 2 altogether
+        await charityInstance.depositCampaign(subAccount2, {from: accounts[5], value: "1000000000000000000"}) 
+        await charityInstance.depositCampaign(subAccount2, {from: accounts[6], value: "1000000000000000000"}) // 2 ether out of 3 altogether
+        let amountInSubAccount1 = await charityInstance.getSubAccountBalance(subAccount1);
+        let amountInSubAccount2 = await charityInstance.getSubAccountBalance(subAccount2);
+        assert.equal(
+            amountInSubAccount1,
+            "1000000000000000000",
+            "Donation did not go through."
+        )
+        assert.equal(
+            amountInSubAccount2,
+            "2000000000000000000",
+            "Donation did not go through."
+        )
+    })
+
+    it("Change remaining sub-accounts to elapsed deposits", async() => { 
+        await charityInstance.fastForwardCampaignStates() // 1 ether out of 2
+        let arrayOfStages = await charityInstance.getStages(); 
+        // updates sub wallet "Water" and "Building materials" to elapsed. (indexes 1 and 2 respectively). "Food" is already accepting deposits so we do nothing to it.
+        const stageToVerify = utils.formatBytes32String("Elapsed Deposits");
+        assert.equal(
+            arrayOfStages[1],
+            stageToVerify,
+            "The stage did not get successfully updated"
+        )
+        assert.equal(
+            arrayOfStages[2],
+            stageToVerify,
+            "The stage did not get successfully updated"
+        )
+    })
+
+    it("Withdraw from Elapsed Deposits sub-accounts", async() => {
+        let owner = await charityInstance.getContractOwner();
+        const subAccount1 = utils.formatBytes32String("Water")
+        const subAccount2 = utils.formatBytes32String("Materials")
+        let withdrawal1 = await charityInstance.withdrawCampaign(subAccount1, {from: owner}) 
+        let withdrawal2 = await charityInstance.withdrawCampaign(subAccount2, {from: owner}) 
+
+        // let balance1 = await charityInstance.getSubAccountBalance(subAccount1);
+        // let balance2 = await charityInstance.getSubAccountBalance(subAccount2);
+        // let allocationPercentage = await charityInstance.showAllocation();
+        //let totalSum = balance1 + balance2; // this is the total pool to be distributed       
+        truffleAssert.eventEmitted(withdrawal1, "elapsedDepositsTransfer", (ev) => {
+            return ev.splitArray[0] == "500000000000000000" && ev.splitArray[1] == "500000000000000000";
+        })
+        truffleAssert.eventEmitted(withdrawal2, "elapsedDepositsTransfer", (ev) => {
+            return ev.splitArray[0] == "1000000000000000000" && ev.splitArray[1] == "1000000000000000000";
+        })
+    })
 });
 
