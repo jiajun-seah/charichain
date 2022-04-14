@@ -13,7 +13,7 @@ contract Charity {
     uint8 public numberOfSubAccounts; //subaccounts sld not exceed 255
     mapping(address => uint8) public subAccountPercentages; // mapping of proportion of amount donated, for each sub-account [10, 20, 30, 40] etc
     mapping(address => bytes32) public subAccountNames; // same size as mapping above, stores the name of each subaccount for that charity
-    // mapping(address => uint256) public subAccountVotes; //same size as mapping above, tracks num. of votes per subaccount for that charity
+    mapping(address => uint256) public subAccountVotes; //same size as mapping above, tracks num. of votes per subaccount for that charity
     mapping(address => uint256) public amountDonated; // mapping for amount that each person donates
 
     // campaign vars
@@ -52,6 +52,9 @@ contract Charity {
     // event TokenSent(address sender, uint256 amt); //event of Charity sending CT to donor
     event Donated(address mainAccount); //event of voting for a sub-account
     event Voted(address subaccount); //event of voting for a sub-account
+    event EndVote(address sender, uint256 currVoteCount); //event of ending a vote process
+    event Tally(address subAccount, uint256 voteCounts);
+    event TotalTally(uint256[] voteCountsList);
     // event Amount(uint256 amt);
     
     // campaign events
@@ -402,18 +405,28 @@ contract Charity {
         return donorList[subAccount].length;
     }
 
+    //EACH sub-account call this before checkVoteOutcome is called, to reset their votes
+    function endVote() public payable {
+        uint256 currVoteCount = checkCTBalance(msg.sender);
+        subAccountVotes[msg.sender] = currVoteCount;
+
+        emit EndVote(msg.sender, subAccountVotes[msg.sender]);
+
+        //reset voteCount
+        //simulate burn tokens by transferring from subaccount to charity
+        erc20instance.transfer(address(this), currVoteCount); 
+    }
 
     function checkVoteOutcome() public payable returns(uint256[] memory vc) {
         uint256[] memory voteCounts = new uint256[](getNumberOfAccounts());
         for (uint256 i = 0; i < getNumberOfAccounts(); i++) {
-            uint256 currVoteCount = checkCTBalance(subAccounts[i]);
+            uint256 currVoteCount = subAccountVotes[subAccounts[i]];
             voteCounts[i] = currVoteCount;
-
-            //reset voteCount
-            erc20instance.transferFrom(subAccounts[i], address(this), currVoteCount); //simulate burn tokens by transferring from subaccount to charity
-
+            // emit Tally(subAccounts[i], voteCounts[i]);
         }
 
-        return voteCounts;        
+        emit TotalTally(voteCounts);   
+        return voteCounts;
+            
     }
 }
