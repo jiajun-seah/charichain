@@ -52,6 +52,7 @@ contract('Campaign', function(accounts) {
         )
     });
 
+    //check that three sub-accounts are indeed created
     it('Correct number of sub-accounts', async() => {
         nSubAccounts = await charityInstance.getNumberOfAccounts();
         // console.log(nSubAccounts)
@@ -60,7 +61,6 @@ contract('Campaign', function(accounts) {
             3,
             "Wrong number of sub-accounts created"
         )
-
     });
 
     //test sub-account percentages configuration
@@ -76,8 +76,8 @@ contract('Campaign', function(accounts) {
         // await charityInstance.allocatePercentages(percentageArray);
         await truffleAssert.reverts(charityInstance.allocatePercentages(percentageArray), "Your percentages does not add up to 100")
     });
+    
     // 2) allocate percentages to each sub account using allocatePercentages[]
-
     it('Allocate sub-account percentages', async() => {
         let owner = await charityInstance.getContractOwner();
         let percentageArray = [40, 30, 30];
@@ -134,13 +134,12 @@ contract('Campaign', function(accounts) {
         truffleAssert.eventEmitted(campaign, "createdCampaign");
     })
 
-    // we will be unable to add a campaign again. 
-
-    // it("Create campaign again after campaign has been created", async() => {
-    //     let owner = await charityInstance.getContractOwner();
-    //     const nameOfCampaign = utils.formatBytes32String("Charity Drive")
-    //     await truffleAssert.reverts(charityInstance.createCampaign(nameOfCampaign, {from: owner}), "There is another campaign still running.")
-    // })
+    //Test unable to add a campaign again. 
+    it("Create campaign again after campaign has been created", async() => {
+        let owner = await charityInstance.getContractOwner();
+        const nameOfCampaign = utils.formatBytes32String("Charity Drive")
+        await truffleAssert.reverts(charityInstance.createCampaign(nameOfCampaign, {from: owner}), "There is another campaign still running.")
+    })
 
 
     // extra cases: cannot change campaign goal if already started campaign.
@@ -150,7 +149,7 @@ contract('Campaign', function(accounts) {
         await truffleAssert.reverts(charityInstance.addCampaignGoals(subAccountGoals, {from: owner}), "The campaign has not been created or has already started!")
     })
 
-    // END OF PART 1
+    //END OF PART 1
     // FOR PART 3: INCLUDE EVERYTHING BEFORE THIS
     
     //6) Donate to a sub account, leave it as Accepting still
