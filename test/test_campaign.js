@@ -54,6 +54,7 @@ contract('Campaign', function(accounts) {
     });
 
     // test Case 2
+    //check that three sub-accounts are indeed created
     it('Correct number of sub-accounts', async() => {
         nSubAccounts = await charityInstance.getNumberOfAccounts();
         // console.log(nSubAccounts)
@@ -62,7 +63,6 @@ contract('Campaign', function(accounts) {
             3,
             "Wrong number of sub-accounts created"
         )
-
     });
 
     // test case 3
@@ -79,6 +79,7 @@ contract('Campaign', function(accounts) {
         // await charityInstance.allocatePercentages(percentageArray);
         await truffleAssert.reverts(charityInstance.allocatePercentages(percentageArray), "Your percentages does not add up to 100")
     });
+    
     // 2) allocate percentages to each sub account using allocatePercentages[]
 
     // test case 4
@@ -139,11 +140,13 @@ contract('Campaign', function(accounts) {
     })
 
     // test case 7: we are unable to create campaign after it has been started
+    //Test unable to add a campaign again. 
     it("Create campaign again after campaign has been created", async() => {
         let owner = await charityInstance.getContractOwner();
         const nameOfCampaign = utils.formatBytes32String("Charity Drive")
         await truffleAssert.reverts(charityInstance.createCampaign(nameOfCampaign, {from: owner}), "There is another campaign still running.")
     })
+
 
     // test case 8
     // extra cases: cannot change campaign goal if already started campaign.
