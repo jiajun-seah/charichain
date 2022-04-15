@@ -65,7 +65,7 @@ contract('Campaign', function(accounts) {
         )
     });
 
-    // test case 3
+    // test case 3a
     //test sub-account percentages configuration
     it('Cannot assign invalid percentages (wrong size of array)', async() => {
         let percentageArray = [40, 30];
@@ -73,6 +73,7 @@ contract('Campaign', function(accounts) {
         await truffleAssert.reverts(charityInstance.allocatePercentages(percentageArray), "Length of input differs from number of sub-accounts")
     });
 
+    // test case 3b
     //test sub-account percentages configuration
     it('Cannot assign invalid percentages (does not sum to 100)', async() => {
         let percentageArray = [40, 30, 20];
@@ -213,8 +214,8 @@ contract('Campaign', function(accounts) {
         }) // emitted when transfer is done. Show increase in ether balance in Ganache (2 ether)
     })
 
-    // simulating elapsed deposits: first depositing an amount that does not hit goals in remaining accounts
-    // test case 13
+    //simulating elapsed deposits: first depositing an amount that does not hit goals in remaining accounts
+    //test case 13
     it("Donate to rest of the sub accounts, but do not hit goal", async() => {
         const subAccount1 = utils.formatBytes32String("Water")
         const subAccount2 = utils.formatBytes32String("Materials")
@@ -274,7 +275,7 @@ contract('Campaign', function(accounts) {
         })
     })
 
-    // test case 16
+    //test case 16
     it("Reset campaign", async() => { 
         let owner = await charityInstance.getContractOwner();
         const nameOfCampaign = utils.formatBytes32String("Charity Drive 2")
@@ -383,7 +384,7 @@ contract('Campaign', function(accounts) {
         )
     })
 
-    // tset case 21
+    // test case 21
     it("Withdraw from Elapsed Deposits sub-accounts", async() => {
         let owner = await charityInstance.getContractOwner();
         const subAccount1 = utils.formatBytes32String("Water")
