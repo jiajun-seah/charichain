@@ -20,6 +20,7 @@ contract('Campaign', function(accounts) {
     console.log("Testing Charity Contract")
 
     // create sub accounts
+    // Test Case 1
     it('Create Sub Accounts', async() => {
         let owner = await charityInstance.getContractOwner();
         const subAccount1 = utils.formatBytes32String("Food")
@@ -52,6 +53,7 @@ contract('Campaign', function(accounts) {
         )
     });
 
+    // test Case 2
     it('Correct number of sub-accounts', async() => {
         nSubAccounts = await charityInstance.getNumberOfAccounts();
         // console.log(nSubAccounts)
@@ -63,6 +65,7 @@ contract('Campaign', function(accounts) {
 
     });
 
+    // test case 3
     //test sub-account percentages configuration
     it('Cannot assign invalid percentages (wrong size of array)', async() => {
         let percentageArray = [40, 30];
@@ -78,6 +81,7 @@ contract('Campaign', function(accounts) {
     });
     // 2) allocate percentages to each sub account using allocatePercentages[]
 
+    // test case 4
     it('Allocate sub-account percentages', async() => {
         let owner = await charityInstance.getContractOwner();
         let percentageArray = [40, 30, 30];
@@ -93,13 +97,13 @@ contract('Campaign', function(accounts) {
 
     //3) create campaign (make sure owner instantiates),
 
-
-    // PART 4 END: FROM HERE ON COMMENT TILL NEXT MENTION OF PART 4
+    // test case 5
     it("Create campaign, not from owner", async() => {
         const nameOfCampaign = utils.formatBytes32String("Charity Drive")
         await truffleAssert.reverts(charityInstance.createCampaign(nameOfCampaign, {from: accounts[3]}), "This method requires the owner to instantiate it!")
     })
 
+    // test case 6
     it("Create campaign", async() => {
         let owner = await charityInstance.getContractOwner();
         const nameOfCampaign = utils.formatBytes32String("Charity Drive")
@@ -134,15 +138,14 @@ contract('Campaign', function(accounts) {
         truffleAssert.eventEmitted(campaign, "createdCampaign");
     })
 
-    // we will be unable to add a campaign again. 
+    // test case 7: we are unable to create campaign after it has been started
+    it("Create campaign again after campaign has been created", async() => {
+        let owner = await charityInstance.getContractOwner();
+        const nameOfCampaign = utils.formatBytes32String("Charity Drive")
+        await truffleAssert.reverts(charityInstance.createCampaign(nameOfCampaign, {from: owner}), "There is another campaign still running.")
+    })
 
-    // it("Create campaign again after campaign has been created", async() => {
-    //     let owner = await charityInstance.getContractOwner();
-    //     const nameOfCampaign = utils.formatBytes32String("Charity Drive")
-    //     await truffleAssert.reverts(charityInstance.createCampaign(nameOfCampaign, {from: owner}), "There is another campaign still running.")
-    // })
-
-
+    // test case 8
     // extra cases: cannot change campaign goal if already started campaign.
     it("Add campaign goals although campaign already started", async() => {
         let owner = await charityInstance.getContractOwner();
@@ -150,9 +153,7 @@ contract('Campaign', function(accounts) {
         await truffleAssert.reverts(charityInstance.addCampaignGoals(subAccountGoals, {from: owner}), "The campaign has not been created or has already started!")
     })
 
-    // END OF PART 1
-    // FOR PART 3: INCLUDE EVERYTHING BEFORE THIS
-    
+    // test case 9
     //6) Donate to a sub account, leave it as Accepting still
 
     it("Donate to sub account", async() => {
@@ -173,6 +174,7 @@ contract('Campaign', function(accounts) {
     })
 
     // withdraw when account is still in "Accepting Deposits phase", which should not be allowed.
+    // test case 10
     it("Withdraw from Accepting deposits sub account", async() => {
         let owner = await charityInstance.getContractOwner();
         const subAccount = utils.formatBytes32String("Food")
@@ -181,6 +183,7 @@ contract('Campaign', function(accounts) {
 
 
     // 7) Donate to the sub account, until it hits the amount enough to withdraw
+    // test case 11
     it("Deposit into sub account such that it hits its goal", async() => {
         const subAccount = utils.formatBytes32String("Food")
         let campaign = await charityInstance.depositCampaign(subAccount, {from: accounts[4], value: "1500000000000000000"}) // 2.5 ether out of 2 total, should change to releasing dep
@@ -194,6 +197,7 @@ contract('Campaign', function(accounts) {
     })
 
     // withdraw when account is ready for withdrawal! in this case it's ready because it has "hit" its goal
+    // test case 12
     it("Withdraw from Releasing Deposits sub account", async() => {
         let owner = await charityInstance.getContractOwner();
         const subAccount = utils.formatBytes32String("Food")
@@ -204,6 +208,7 @@ contract('Campaign', function(accounts) {
     })
 
     // simulating elapsed deposits: first depositing an amount that does not hit goals in remaining accounts
+    // test case 13
     it("Donate to rest of the sub accounts, but do not hit goal", async() => {
         const subAccount1 = utils.formatBytes32String("Water")
         const subAccount2 = utils.formatBytes32String("Materials")
@@ -224,6 +229,7 @@ contract('Campaign', function(accounts) {
     })
 
     // PURELY for demo purposes. we change stage of remaining accounts to Elapsed. Normally this takes 7 days
+    // test case 14
     it("Change remaining sub-accounts to elapsed deposits", async() => { 
         await charityInstance.fastForwardCampaignStates() // 1 ether out of 2
         let arrayOfStages = await charityInstance.getStages(); 
@@ -242,6 +248,7 @@ contract('Campaign', function(accounts) {
     })
 
     // withdraw for both accounts (this is a index 0 type account, so it splits the funds based on declared percentages)
+    // test case 15
     it("Withdraw from Elapsed Deposits sub-accounts", async() => {
         let owner = await charityInstance.getContractOwner();
         const subAccount1 = utils.formatBytes32String("Water")
@@ -261,20 +268,22 @@ contract('Campaign', function(accounts) {
         })
     })
 
-    // END OF PART 3
-    // PART 4 CONTINUES AGAIN
+    // test case 16
     it("Reset campaign", async() => { 
         let owner = await charityInstance.getContractOwner();
         const nameOfCampaign = utils.formatBytes32String("Charity Drive 2")
         let campaign = await charityInstance.createCampaign(nameOfCampaign, {from: owner});
-        truffleAssert.eventEmitted(campaign, "createdCampaign");
-    })
-
-    it("Add campaign goals, from owner", async() => {
-        let owner = await charityInstance.getContractOwner();
         let subAccountGoals = ["1000000000000000000", "2000000000000000000", "3000000000000000000"];
         await charityInstance.addCampaignGoals(subAccountGoals, {from: owner});
         let campaignGoals = await charityInstance.getCampaignGoals();
+        let campaignType = 1;
+        await charityInstance.startCampaign(campaignType, {from: owner})
+        let storedCampaignType = await charityInstance.getCampaignType();
+        assert.equal(
+            storedCampaignType.toNumber(),
+            1,
+            "Campaign type not assigned."
+        )
         assert.equal(
             campaignGoals[0],
             "1000000000000000000",
@@ -290,21 +299,10 @@ contract('Campaign', function(accounts) {
             "3000000000000000000",
             "The goal is not allocated."
         )
+        truffleAssert.eventEmitted(campaign, "createdCampaign");
     })
 
-    // start campaign type 1, donate, then check if the function for returning to donors is working properly.
-    it("Start campaign, from owner", async() => {
-        let owner = await charityInstance.getContractOwner();
-        let campaignType = 1;
-        await charityInstance.startCampaign(campaignType, {from: owner})
-        let storedCampaignType = await charityInstance.getCampaignType();
-        assert.equal(
-            storedCampaignType.toNumber(),
-            1,
-            "Campaign type not assigned."
-        )
-    })
-
+    // test case 17
     it("Donate to sub account, meeting the goal", async() => {
         const subAccount = utils.formatBytes32String("Food")
         await charityInstance.depositCampaign(subAccount, {from: accounts[4], value: "1000000000000000000"}) // 1 ether out of 1, goal met.
@@ -329,7 +327,7 @@ contract('Campaign', function(accounts) {
         )
     })
 
-
+    // test case 18
     it("Withdraw from Releasing Deposits sub account", async() => {
         let owner = await charityInstance.getContractOwner();
         const subAccount = utils.formatBytes32String("Food")
@@ -339,7 +337,7 @@ contract('Campaign', function(accounts) {
         }) // emitted when transfer is done. Show increase in ether balance in Ganache (2 ether)
     })
 
-
+    // test case 19
     it("Donate to rest of the sub accounts, but do not hit goal", async() => {
         const subAccount1 = utils.formatBytes32String("Water")
         const subAccount2 = utils.formatBytes32String("Materials")
@@ -361,6 +359,7 @@ contract('Campaign', function(accounts) {
         )
     })
 
+    // test case 20
     it("Change remaining sub-accounts to elapsed deposits", async() => { 
         await charityInstance.fastForwardCampaignStates() // 1 ether out of 2
         let arrayOfStages = await charityInstance.getStages(); 
@@ -378,6 +377,7 @@ contract('Campaign', function(accounts) {
         )
     })
 
+    // tset case 21
     it("Withdraw from Elapsed Deposits sub-accounts", async() => {
         let owner = await charityInstance.getContractOwner();
         const subAccount1 = utils.formatBytes32String("Water")
