@@ -116,6 +116,8 @@ contract('Campaign', function(accounts) {
         let campaignType = 0;
         await charityInstance.startCampaign(campaignType, {from: owner})
         let storedCampaignType = await charityInstance.getCampaignType();
+        // check that you cannot assign percentages during campaign.
+        let percentageArray = [40, 30, 30];
         assert.equal(
             storedCampaignType.toNumber(),
             0,
@@ -137,6 +139,7 @@ contract('Campaign', function(accounts) {
             "The goal is not allocated."
         )
         truffleAssert.eventEmitted(campaign, "createdCampaign");
+        await truffleAssert.reverts(charityInstance.allocatePercentages(percentageArray), "Cannot change sub-account percentages during campaign!")
     })
 
     // test case 7: we are unable to create campaign after it has been started

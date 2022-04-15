@@ -103,6 +103,7 @@ contract Charity {
     // allocate percentages based on sub-account addresses. Feed in array of percentages
     function allocatePercentages(uint8[] memory percentages) public ownerOnly() {
         require(percentages.length == subAccounts.length, "Length of input differs from number of sub-accounts");
+        require(campaignStatus != 0 && campaignStatus != 1, "Cannot change sub-account percentages during campaign!"); // cannot change percentages when campaign is running.
         uint temp;
         for(uint i = 0; i < percentages.length; i++) {
             temp += percentages[i];
