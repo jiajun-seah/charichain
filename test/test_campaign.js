@@ -65,7 +65,7 @@ contract('Campaign', function(accounts) {
         )
     });
 
-    // test case 3
+    // test case 3a
     //test sub-account percentages configuration
     it('Cannot assign invalid percentages (wrong size of array)', async() => {
         let percentageArray = [40, 30];

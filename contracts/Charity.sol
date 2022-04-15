@@ -374,6 +374,7 @@ contract Charity {
         return address(this).balance;
     }
 
+    //getter for progress of each subaccount in a campaign
     function getSubAccountBalance(bytes32 subAccountName) public view returns(uint256) {
         address temp;
         for (uint i = 0; i < numberOfSubAccounts; i++) {
